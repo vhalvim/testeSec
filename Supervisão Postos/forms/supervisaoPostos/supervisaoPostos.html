@@ -1,0 +1,1266 @@
+<html>
+
+<head>
+	<link type="text/css" rel="stylesheet" href="/style-guide/css/fluig-style-guide.min.css" />
+	<script type="text/javascript" src="/portal/resources/js/jquery/jquery.js"></script>
+	<script type="text/javascript" src="/portal/resources/js/jquery/jquery-ui.min.js"></script>
+	<script type="text/javascript" src="/portal/resources/js/mustache/mustache-min.js"></script>
+	<script type="text/javascript" src="/style-guide/js/fluig-style-guide.min.js" charset="utf-8"></script>
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+	<script type="text/javascript" src="/webdesk/vcXMLRPC.js" charset="utf-8"></script>
+	<script type="text/javascript" src="geoLocation.js" charset="utf-8"></script>
+	<script type="text/javascript" src="dthora.js" charset="utf-8"></script>
+	<script type="text/javascript" src="verifAtividade.js" charset="utf-8"></script>
+	<script type="text/javascript" src="checkout.js" charset="utf-8"></script>
+	<script type="text/javascript" src="qrcode.js" charset="utf-8"></script>
+	<script type="text/javascript" src="instascan.min.js"></script>
+
+	<script language="javascript">
+		function showCamera(param) {
+			JSInterface.showCamera(param);
+		}
+		function disablePullToRefresh() {
+			return true;
+		}
+	</script>
+</head>
+
+<body onload="verifAtividade();">
+	<div class="row">
+		<div class="form-group col-md-12">
+			<label for="captura">Camera QRCode</label>
+			<video id="captura" width="320" height="240"></video>
+			<script>
+				scanner = new Instascan.Scanner({
+					video: document.getElementById('captura')
+				});
+				scanner.addListener('scan', function (content) {
+					// console.log('Escaneou o conteudo: ' + content);
+					alert('Escaneou o conteudo: ' + content);
+					window.open(content, "_blank");
+				});
+
+				Instascan.Camera.getCameras().then(function (cameras) {
+					if (cameras.length > 0) {
+						scanner.start(cameras[0]);
+					} else {
+						// console.log("Não existe câmera no dispositivo!");
+						alert("Não existe câmera no dispositivo!");
+					}
+				});
+			</script>
+		</div>
+	</div>
+	<div class="fluig-style-guide">
+		<form name="form" role="form">
+			<div class="panel panel-default">
+				<div class="panel-body">
+					<div class="row">
+						<div class="form-group col-md-6">
+							<label for="latitude">Latitude</label>
+							<input type="text" name="latitude" id="latitude" class="form-control" />
+						</div>
+						<div class="form-group col-md-5">
+							<label for="longitude">Longitude</label>
+							<input type="text" name="longitude" id="longitude" class="form-control" />
+						</div>
+						<div class="form-group col-md-1">
+							<label for="numAtiv">NroAtiv</label>
+							<input type="text" name="numAtiv" id="numAtiv" class="form-control" />
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="panel panel-primary" id="checkin">
+				<div class="panel-heading">
+					<h3 class="panel-title">Check-in</h3>
+				</div>
+				<div class="panel-body">
+					<div class="row">
+						<div class="form-group col-md-2">
+							<label for="matSup">Matrícula do Supervisor</label>
+							<input type="text" name="matSup" id="matSup" class="form-control" readonly />
+						</div>
+						<div class="form-group col-md-10">
+							<label for="userSup">Nome do Supervisor</label>
+							<input type="text" name="userSup" id="userSup" class="form-control" readonly />
+						</div>
+					</div>
+					<div class="row">
+						<div class="form-group col-md-2">
+							<label for="dia">Data</label>
+							<input type="text" name="dia" id="dia" class="form-control" readonly />
+						</div>
+						<div class="form-group col-md-2">
+							<label for="hora">Hora</label>
+							<input type="text" name="hora" id="hora" class="form-control" readonly />
+						</div>
+						<div class="form-group col-md-8">
+							<label for="posto">Posto de Serviço</label>
+							<input type="text" name="posto" id="posto" class="form-control" readonly />
+						</div>
+					</div>
+					<div class="row">
+						<div class="form-group col-md-12">
+							<label class="text-danger" for="tipoChecklist">*</label>
+							<label for="tipoChecklist">Tipo de Checklist:&nbsp;</label>
+						</div>
+					</div>
+					<div class="row">
+						<div class="form-group col-md-12" id="tipoChecklist">
+							<div class="custom-checkbox custom-checkbox-inline custom-checkbox-primary">
+								<input type="checkbox" name="formVig" id="formVig" onchange="isVisible()">
+								<label for="formVig">Checklist Vigilantes</label>
+							</div>
+							<div class="custom-checkbox custom-checkbox-inline custom-checkbox-primary">
+								<input type="checkbox" name="formPort" id="formPort" onchange="isVisible()">
+								<label for="formPort">Checklist Portaria</label>
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="form-group col-md-12">
+							<label for="obsLocal">Observações sobre erro na localização</label>
+							<textarea name="obsLocal" id="obsLocal" rows="2" class="form-control obs"></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="panel panel-primary" id="checkVig">
+				<div class="panel-heading">
+					<h3 class="panel-title">Checklist de Vigilância</h3>
+				</div>
+				<div class="panel-body">
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<h3 class="panel-title">Checklist Operacional</h3>
+						</div>
+						<div class="panel-body">
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_A">1 - A apresentação do efetivo está adequada? (postura,
+										etc.)</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_A" value="sim" id="1Apos" class="radiobox">
+										<label for="1Apos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_A" value="nao" id="1Aneg" class="radiobox">
+										<label for="1Aneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_A">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="cam_A"
+										value="Adicionar da Câmera" onclick="showCamera('apresentacaoVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_A">Observações:</label>
+									<textarea name="obsCV_A" id="obsCV_A" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_B">2 - O uniforme está em bom estado/sem necessidade de
+										reposição?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_B" value="sim" id="1Bpos" class="radiobox">
+										<label for="1Bpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_B" value="nao" id="1Bneg" class="radiobox">
+										<label for="1Bneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_B">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_B"
+										value="Adicionar da Câmera" onclick="showCamera('uniformeVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_B">Observações:</label>
+									<textarea name="obsCV_B" id="obsCV_B" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_C">3 - Os equipamentos/meios auxiliares estão funcionando
+										corretamente?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_C" value="sim" id="1Cpos" class="radiobox">
+										<label for="1Cpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_C" value="nao" id="1Cneg" class="radiobox">
+										<label for="1Cneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_C">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_C"
+										value="Adicionar da Câmera" onclick="showCamera('equipamentosVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_C">Observações:</label>
+									<textarea name="obsCV_C" id="obsCV_C" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_D">4 - A PGDM esta sendo testada diariamente e anotado em livro de
+										ocorrências?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_D" value="sim" id="1Dpos" class="radiobox">
+										<label for="1Dpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_D" value="nao" id="1Dneg" class="radiobox">
+										<label for="1Dneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_D">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_D"
+										value="Adicionar da Câmera" onclick="showCamera('PGDMVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_D">Observações:</label>
+									<textarea name="obsCV_D" id="obsCV_D" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_E">5 - Os vigilantes estão posicionados conforme Plano de
+										Segurança?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_E" value="sim" id="1Epos" class="radiobox">
+										<label for="1Epos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_E" value="nao" id="1Eneg" class="radiobox">
+										<label for="1Eneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_E">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_E"
+										value="Adicionar da Câmera" onclick="showCamera('planoSegVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_E">Observações:</label>
+									<textarea name="obsCV_E" id="obsCV_E" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_F">6 - O Colaborador registra o teste semanal do botão de
+										pânico?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_F" value="sim" id="1Fpos" class="radiobox">
+										<label for="1Fpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_F" value="nao" id="1Fneg" class="radiobox">
+										<label for="1Fneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_F">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_F"
+										value="Adicionar da Câmera" onclick="showCamera('botPanicoVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_F">Observações:</label>
+									<textarea name="obsCV_F" id="obsCV_F" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_G">7 - É utilizado o cofre para guarda de arma/munição?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_G" value="sim" id="1Gpos" class="radiobox">
+										<label for="1Gpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_G" value="nao" id="1Gneg" class="radiobox">
+										<label for="1Gneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_G">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_G"
+										value="Adicionar da Câmera" onclick="showCamera('cofreUtilVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_G">Observações:</label>
+									<textarea name="obsCV_G" id="obsCV_G" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_H">8 - O cofre para guarda de arma/munição está fixado?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_H" value="sim" id="1Hpos" class="radiobox">
+										<label for="1Hpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_H" value="nao" id="1Hneg" class="radiobox">
+										<label for="1Hneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_H">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_H"
+										value="Adicionar da Câmera" onclick="showCamera('cofreFixVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_H">Observações:</label>
+									<textarea name="obsCV_H" id="obsCV_H" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_I">9 - É utilizado veículos (carro, moto no local e esta em boas
+										condições)?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_I" value="sim" id="1Ipos" class="radiobox">
+										<label for="1Ipos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_I" value="nao" id="1Ineg" class="radiobox">
+										<label for="1Ineg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_I">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_I"
+										value="Adicionar da Câmera" onclick="showCamera('veiculoVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_I">Observações:</label>
+									<textarea name="obsCV_I" id="obsCV_I" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_J">10 - O efetivo conhece e cumpre os procedimentos do posto?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_J" value="sim" id="1Jpos" class="radiobox">
+										<label for="1Jpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_J" value="nao" id="1Jneg" class="radiobox">
+										<label for="1Jneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_J">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_J"
+										value="Adicionar da Câmera" onclick="showCamera('procedVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_J">Observações:</label>
+									<textarea name="obsCV_J" id="obsCV_J" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_K">11 - Os armamentos estão em boas condições?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_K" value="sim" id="1Kpos" class="radiobox">
+										<label for="1Kpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_K" value="nao" id="1Kneg" class="radiobox">
+										<label for="1Kneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_K">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_K"
+										value="Adicionar da Câmera" onclick="showCamera('armamentosCondVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_K">Observações:</label>
+									<textarea name="obsCV_K" id="obsCV_K" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_L">12 - A quantidade de munições está correta?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_L" value="sim" id="1Lpos" class="radiobox">
+										<label for="1Lpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_L" value="nao" id="1Lneg" class="radiobox">
+										<label for="1Lneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_L">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_L"
+										value="Adicionar da Câmera" onclick="showCamera('munQuantVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_L">Observações:</label>
+									<textarea name="obsCV_L" id="obsCV_L" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_M">13 - Tem munições com a ponta girando?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_M" value="sim" id="1Mpos" class="radiobox">
+										<label for="1Mpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_M" value="nao" id="1Mneg" class="radiobox">
+										<label for="1Mneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_M">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_M"
+										value="Adicionar da Câmera" onclick="showCamera('munGiroVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_M">Observações:</label>
+									<textarea name="obsCV_M" id="obsCV_M" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cV_N">14 - Os coletes balisticos estão em bom estado de
+										conservação?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_N" value="sim" id="1Npos" class="radiobox">
+										<label for="1Npos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cV_N" value="nao" id="1Nneg" class="radiobox">
+										<label for="1Nneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camV_N">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camV_N"
+										value="Adicionar da Câmera" onclick="showCamera('coleteVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCV_N">Observações:</label>
+									<textarea name="obsCV_N" id="obsCV_N" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<h3 class="panel-title">Checklist de Documentação</h3>
+						</div>
+						<div class="panel-body">
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_A">1 - O cartão de ponto está preenchido corretamente?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_A" value="sim" id="2Apos" class="radiobox">
+										<label for="2Apos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_A" value="nao" id="2Aneg" class="radiobox">
+										<label for="2Aneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_A">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_A"
+										value="Adicionar da Câmera" onclick="showCamera('cartPontoVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_A">Observações:</label>
+									<textarea name="obsCVb_A" id="obsCVb_A" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_B">2 - A cópia autenticada e válida do registro de cada arma está no
+										local?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_B" value="sim" id="2Bpos" class="radiobox">
+										<label for="2Bpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_B" value="nao" id="2Bneg" class="radiobox">
+										<label for="2Bneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_B">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_B"
+										value="Adicionar da Câmera" onclick="showCamera('regArmaVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_B">Observações:</label>
+									<textarea name="obsCVb_B" id="obsCVb_B" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_C">3 - Os Vigilantes estão com a CNV dentro do prazo de
+										validade?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_C" value="sim" id="2Cpos" class="radiobox">
+										<label for="2Cpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_C" value="nao" id="2Cneg" class="radiobox">
+										<label for="2Cneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_C">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_C"
+										value="Adicionar da Câmera" onclick="showCamera('prazoCNVVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_C">Observações:</label>
+									<textarea name="obsCVb_C" id="obsCVb_C" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_D">4 - Os Vigilantes estão com a reciclagem dentro do prazo de
+										validade ?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_D" value="sim" id="2Dpos" class="radiobox">
+										<label for="2Dpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_D" value="nao" id="2Dneg" class="radiobox">
+										<label for="2Dneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_D">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_D"
+										value="Adicionar da Câmera" onclick="showCamera('reciclagemVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_D">Observações:</label>
+									<textarea name="obsCVb_D" id="obsCVb_D" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_E">5 - Os vigilantes estão com crachá em local visível e dentro do
+										prazo de validade?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_E" value="sim" id="2Epos" class="radiobox">
+										<label for="2Epos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_E" value="nao" id="2Eneg" class="radiobox">
+										<label for="2Eneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_E">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_E"
+										value="Adicionar da Câmera" onclick="showCamera('crachaVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_E">Observações:</label>
+									<textarea name="obsCVb_E" id="obsCVb_E" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_F">6 - O crachá está com validade superior a 30 dias? (quando não
+										relatar abaixo)</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_F" value="sim" id="2Fpos" class="radiobox">
+										<label for="2Fpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_F" value="nao" id="2Fneg" class="radiobox">
+										<label for="2Fneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_F">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_F"
+										value="Adicionar da Câmera" onclick="showCamera('validadeCrachaVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_F">Observações:</label>
+									<textarea name="obsCVb_F" id="obsCVb_F" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_G">7 - Os procedimentos definidos estão adequados as necessidades do
+										cliente / local?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_G" value="sim" id="2Gpos" class="radiobox">
+										<label for="2Gpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_G" value="nao" id="2Gneg" class="radiobox">
+										<label for="2Gneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_G">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_G"
+										value="Adicionar da Câmera" onclick="showCamera('procNecesVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_G">Observações:</label>
+									<textarea name="obsCVb_G" id="obsCVb_G" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_H">8 - O efetivo está atento as atividades pertinentes ao seu posto
+										de serviço?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_H" value="sim" id="2Hpos" class="radiobox">
+										<label for="2Hpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_H" value="nao" id="2Hneg" class="radiobox">
+										<label for="2Hneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_H">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_H"
+										value="Adicionar da Câmera" onclick="showCamera('atentAtivVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_H">Observações:</label>
+									<textarea name="obsCVb_H" id="obsCVb_H" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_I">9 - As ocorrências estão registradas corretamente no livro de
+										ocorrência?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_I" value="sim" id="2Ipos" class="radiobox">
+										<label for="2Ipos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_I" value="nao" id="2Ineg" class="radiobox">
+										<label for="2Ineg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_I">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_I"
+										value="Adicionar da Câmera" onclick="showCamera('ocorrRegVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_I">Observações:</label>
+									<textarea name="obsCVb_I" id="obsCVb_I" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_J">10 - Os registros de pendências operacionais foram
+										resolvidos?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_J" value="sim" id="2Jpos" class="radiobox">
+										<label for="2Jpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_J" value="nao" id="2Jneg" class="radiobox">
+										<label for="2Jneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_J">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_J"
+										value="Adicionar da Câmera" onclick="showCamera('regOpsVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_J">Observações:</label>
+									<textarea name="obsCVb_J" id="obsCVb_J" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_K">11 - O Termo de abertura e o livro de ocorrência estão
+										devidamente preenchidos?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_K" value="sim" id="2Kpos" class="radiobox">
+										<label for="2Kpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_K" value="nao" id="2Kneg" class="radiobox">
+										<label for="2Kneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_K">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_K"
+										value="Adicionar da Câmera" onclick="showCamera('termOcorrVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_K">Observações:</label>
+									<textarea name="obsCVb_K" id="obsCVb_K" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cVb_L">12 - O D14 - Atividade do Posto está atualizado com as atividades
+										de vigilância diárias?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_L" value="sim" id="2Lpos" class="radiobox">
+										<label for="2Lpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cVb_L" value="nao" id="2Lneg" class="radiobox">
+										<label for="2Lneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="camVb_L">Anexar foto</label>
+									<br>
+									<input type="button" class="btn btn-primary" name="camVb_L"
+										value="Adicionar da Câmera" onclick="showCamera('ativAtualVig');" />
+								</div>
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCVb_L">Observações:</label>
+									<textarea name="obsCVb_L" id="obsCVb_L" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="panel panel-primary" id="checkPort">
+				<div class="panel-heading">
+					<h3 class="panel-title">Checklist Portaria e Limpeza</h3>
+				</div>
+				<div class="panel-body">
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<h3 class="panel-title">Checklist Operacional</h3>
+						</div>
+						<div class="panel-body">
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cP_A">1 - A apresentação do efetivo está adequada? (postura,
+										etc.)</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_A" value="sim" id="3Apos" class="radiobox">
+										<label for="3Apos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_A" value="nao" id="3Aneg" class="radiobox">
+										<label for="3Aneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camP_A">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camP_A" value="Adicionar da Câmera"
+									onclick="showCamera('apresEfetivoPort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCP_A">Observações:</label>
+									<textarea name="obsCP_A" id="obsCP_A" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cP_B">2 - O uniforme está em bom estado/sem necessidade de
+										reposição?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_B" value="sim" id="3Bpos" class="radiobox">
+										<label for="3Bpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_B" value="nao" id="3Bneg" class="radiobox">
+										<label for="3Bneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camP_B">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camP_B" value="Adicionar da Câmera"
+									onclick="showCamera('uniformePort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCP_B">Observações:</label>
+									<textarea name="obsCP_B" id="obsCP_B" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cP_C">3 - Os materiais/meios auxiliares estão de acordo com o
+										contratado?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_C" value="sim" id="3Cpos" class="radiobox">
+										<label for="3Cpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_C" value="nao" id="3Cneg" class="radiobox">
+										<label for="3Cneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camP_C">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camP_C" value="Adicionar da Câmera"
+									onclick="showCamera('materiaisContrPort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCP_C">Observações:</label>
+									<textarea name="obsCP_C" id="obsCP_C" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cP_D">4 - O efetivo conhece e cumpre os procedimentos do posto?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_D" value="sim" id="3Dpos" class="radiobox">
+										<label for="3Dpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_D" value="nao" id="3Dneg" class="radiobox">
+										<label for="3Dneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camP_D">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camP_D" value="Adicionar da Câmera"
+									onclick="showCamera('efetConhecePort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCP_D">Observações:</label>
+									<textarea name="obsCP_D" id="obsCP_D" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cP_E">5 - Dúvidas são esclarecidas por parte do operacional?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_E" value="sim" id="3Epos" class="radiobox">
+										<label for="3Epos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cP_E" value="nao" id="3Eneg" class="radiobox">
+										<label for="3Eneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camP_E">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camP_E" value="Adicionar da Câmera"
+									onclick="showCamera('duvEscOperPort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCP_E">Observações:</label>
+									<textarea name="obsCP_E" id="obsCP_E" rows="3" class="form-control obs"></textarea>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<h3 class="panel-title">Checklist de Documentos</h3>
+						</div>
+						<div class="panel-body">
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cPb_A">1 - O cartão de ponto está preenchido corretamente?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cPb_A" value="sim" id="4Apos" class="radiobox">
+										<label for="4Apos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cPb_A" value="nao" id="4Aneg" class="radiobox">
+										<label for="4Aneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camPb_A">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camPb_A" value="Adicionar da Câmera"
+									onclick="showCamera('cartPontoPort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCPb_A">Observações:</label>
+									<textarea name="obsCPb_A" id="obsCPb_A" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cPb_B">2 - Os colaboradores estão com crachá em local visivel e dentro
+										do prazo de validade?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cPb_B" value="sim" id="4Bpos" class="radiobox">
+										<label for="4Bpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cPb_B" value="nao" id="4Bneg" class="radiobox">
+										<label for="4Bneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camPb_B">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camPb_B" value="Adicionar da Câmera"
+									onclick="showCamera('colabCrachaPort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCPb_B">Observações:</label>
+									<textarea name="obsCPb_B" id="obsCPb_B" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cPb_C">3 - Os procedimentos definidos estão adequados as necessidades do
+										cliente/local?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cPb_C" value="sim" id="4Cpos" class="radiobox">
+										<label for="4Cpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cPb_C" value="nao" id="4Cneg" class="radiobox">
+										<label for="4Cneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camPb_C">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camPb_C" value="Adicionar da Câmera"
+									onclick="showCamera('procedDefPort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCPb_C">Observações:</label>
+									<textarea name="obsCPb_C" id="obsCPb_C" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+							<hr>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label class="text-danger">*</label>
+									<label for="cPb_D">4 - O efetivo está atento as atividades pertinentes ao seu posto
+										de serviço?</label>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cPb_D" value="sim" id="4Dpos" class="radiobox">
+										<label for="4Dpos">SIM</label>
+									</div>
+									<div class="custom-radio custom-radio-primary">
+										<input type="radio" name="cPb_D" value="nao" id="4Dneg" class="radiobox">
+										<label for="4Dneg">NÃO</label>
+									</div>
+								</div>
+							</div>
+							<div class="form-group col-md-12">
+								<label for="camPb_D">Anexar foto</label>
+								<br>
+								<input type="button" class="btn btn-primary" name="camPb_D" value="Adicionar da Câmera"
+									onclick="showCamera('efetAtentoPort');" />
+							</div>
+							<div class="row">
+								<div class="form-group col-md-12">
+									<label for="obsCPb_D">Observações:</label>
+									<textarea name="obsCPb_D" id="obsCPb_D" rows="3"
+										class="form-control obs"></textarea>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="panel panel-primary" id="checkout">
+				<div class="panel-heading">
+					<h3 class="panel-title">Check-out</h3>
+				</div>
+				<div class="panel-body">
+					<div class="row" id="checkoutRow">
+						<div class="form-group col-md-12">
+							<button type="button" class="btn btn-primary" id="checkoutButton" toastCheckout
+								data-toggle="button" onclick="checkout()">Fazer Checkout</button>
+						</div>
+					</div>
+					<div class="row">
+						<div class="form-group col-md-2">
+							<label for="diaOut">Data</label>
+							<input type="text" name="diaOut" id="diaOut" class="form-control" readonly />
+						</div>
+						<div class="form-group col-md-2">
+							<label for="horaOut">Hora</label>
+							<input type="text" name="horaOut" id="horaOut" class="form-control" readonly />
+						</div>
+						<div class="form-group col-md-8">
+							<label for="postoOut">Posto de Serviço</label>
+							<input type="text" name="postoOut" id="postoOut" class="form-control" readonly />
+						</div>
+					</div>
+					<div class="row">
+						<div class="form-group col-md-12">
+							<label for="obsLocalOut">Observações sobre erro na localização</label>
+							<textarea name="obsLocalOut" id="obsLocalOut" rows="2" class="form-control obs"></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="panel panel-primary" id="revisao">
+				<div class="panel-heading">
+					<h3 class="panel-title">Revisão</h3>
+				</div>
+				<div class="panel-body">
+					<div class="row">
+						<div class="form-group col-md-12">
+							<label class="text-danger" for="tipoChecklist">*</label>
+							<label for="decisao">Aprovar Checklist?</label>
+							<select name="decisao" id="decisao" class="form-control">
+								<option value="1" selected>Aprovar Checklist</option>
+								<option value="0">Reprovar Checklist</option>
+							</select>
+						</div>
+					</div>
+					<div class="row">
+						<div class="form-group col-md-12">
+							<label class="text-danger" for="tipoChecklist">*</label>
+							<label for="obsRev">Observações Revisor</label>
+							<textarea name="obsRev" id="obsREv" rows="5" class="form-control"></textarea>
+						</div>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+</body>
+
+</html>
